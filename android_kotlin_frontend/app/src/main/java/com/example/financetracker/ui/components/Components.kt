@@ -1,6 +1,5 @@
 package com.example.financetracker.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +27,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.example.financetracker.model.Transaction
 import com.example.financetracker.model.TransactionType
 import com.example.financetracker.state.TransactionsState
+import com.example.financetracker.ui.theme.LocalFinanceSemanticColors
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -50,8 +49,32 @@ private val dayFormatter = DateTimeFormatter.ofPattern("dd/MM", Locale("pt", "BR
 
 // PUBLIC_INTERFACE
 @Composable
+fun AppTitleBar(title: String) {
+    Surface(
+        tonalElevation = 2.dp,
+        shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = LocalTextStyle.current.copy(fontWeight = FontWeight.SemiBold)
+            )
+        }
+    }
+}
+
+// PUBLIC_INTERFACE
+@Composable
 fun MonthTopAppBar(state: TransactionsState, onPrev: () -> Unit, onNext: () -> Unit) {
-    Surface(tonalElevation = 2.dp, shadowElevation = 4.dp) {
+    Surface(tonalElevation = 1.dp, shadowElevation = 2.dp, color = MaterialTheme.colorScheme.surface) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -65,7 +88,8 @@ fun MonthTopAppBar(state: TransactionsState, onPrev: () -> Unit, onNext: () -> U
             Text(
                 text = state.selectedMonth.format(monthFormatter)
                     .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("pt","BR")) else it.toString() },
-                style = LocalTextStyle.current.copy(fontWeight = FontWeight.SemiBold)
+                style = LocalTextStyle.current.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
             )
             IconButton(onClick = onNext) {
                 Icon(Icons.Filled.ArrowForwardIos, contentDescription = "Próximo mês")
@@ -77,6 +101,8 @@ fun MonthTopAppBar(state: TransactionsState, onPrev: () -> Unit, onNext: () -> U
 // PUBLIC_INTERFACE
 @Composable
 fun TransactionsTable(modifier: Modifier = Modifier, items: List<Transaction>, formatter: java.text.NumberFormat) {
+    val semantic = LocalFinanceSemanticColors.current
+
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -85,7 +111,9 @@ fun TransactionsTable(modifier: Modifier = Modifier, items: List<Transaction>, f
     ) {
         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Data", fontWeight = FontWeight.SemiBold)
@@ -103,20 +131,30 @@ fun TransactionsTable(modifier: Modifier = Modifier, items: List<Transaction>, f
             } else {
                 LazyColumn {
                     items(items) { t ->
+                        val amountColor = if (t.type == TransactionType.INCOME) semantic.income else semantic.expense
+                        val sign = if (t.type == TransactionType.EXPENSE) "-" else "+"
+                        val formatted = formatter.format(t.amount).toString()
+                        val cleaned = formatted.replace("R$-", "R$ ")
+
                         Row(
                             Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(t.date.format(dayFormatter))
-                            Text(t.description, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                            val color = if (t.type == TransactionType.INCOME) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
-                            val sign = if (t.type == TransactionType.EXPENSE) "-" else "+"
-                            val formatted = formatter.format(t.amount).toString()
-                            val cleaned = formatted.replace("R$-", "R$ ")
-                            Text("$sign$cleaned",
-                                color = color, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                t.description,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 12.dp)
+                            )
+                            Text(
+                                "$sign$cleaned",
+                                color = amountColor,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                         Divider()
                     }
@@ -135,6 +173,8 @@ fun SummaryBar(
     formatter: java.text.NumberFormat,
     modifier: Modifier = Modifier
 ) {
+    val semantic = LocalFinanceSemanticColors.current
+
     Surface(
         modifier = modifier.fillMaxWidth().shadow(4.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -149,17 +189,17 @@ fun SummaryBar(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text("Receitas", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
-                Text(formatter.format(income))
+                Text("Receitas", color = semantic.income, fontWeight = FontWeight.SemiBold)
+                Text(formatter.format(income), color = semantic.income)
             }
             Column {
-                Text("Despesas", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
-                Text(formatter.format(expense))
+                Text("Despesas", color = semantic.expense, fontWeight = FontWeight.SemiBold)
+                Text(formatter.format(expense), color = semantic.expense)
             }
             Column(horizontalAlignment = Alignment.End) {
                 val netColor = when {
-                    net > 0 -> MaterialTheme.colorScheme.secondary
-                    net < 0 -> MaterialTheme.colorScheme.error
+                    net > 0 -> semantic.income
+                    net < 0 -> semantic.expense
                     else -> MaterialTheme.colorScheme.onSurface
                 }
                 Text("Saldo", color = netColor, fontWeight = FontWeight.SemiBold)
@@ -175,19 +215,21 @@ fun AddTransactionButtons(
     onAddIncome: () -> Unit,
     onAddExpense: () -> Unit,
 ) {
+    val semantic = LocalFinanceSemanticColors.current
+
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
     ) {
         FloatingActionButton(
             onClick = onAddIncome,
-            containerColor = MaterialTheme.colorScheme.secondary
+            containerColor = semantic.income
         ) {
             Icon(Icons.Filled.AttachMoney, contentDescription = "Adicionar receita", tint = Color.Black)
         }
         FloatingActionButton(
             onClick = onAddExpense,
-            containerColor = MaterialTheme.colorScheme.error
+            containerColor = semantic.expense
         ) {
             Icon(Icons.Outlined.MoneyOff, contentDescription = "Adicionar despesa", tint = Color.White)
         }
